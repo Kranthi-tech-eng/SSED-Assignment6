@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Food Delivery App</title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#fff;--accent:#ff6b35;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;background:var(--bg);color:#111}
+    header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;background:linear-gradient(90deg,#fff 0%, #fff0 100%);border-bottom:1px solid #eee;position:sticky;top:0;z-index:5}
+    .logo{display:flex;align-items:center;gap:12px;font-weight:700}
+    .logo .mark{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#ff9a76,#ff6b35);display:flex;align-items:center;justify-content:center;color:white;font-weight:800}
+    .search{flex:1;max-width:600px;margin:0 18px}
+    .search input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #e6e6e6;background:white}
+
+    main{display:grid;grid-template-columns:1fr 320px;gap:20px;padding:20px;max-width:1100px;margin:18px auto}
+
+    /* menu */
+    .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 2px 8px rgba(15,15,15,0.04);display:flex;flex-direction:column;gap:12px}
+    .thumb{height:110px;border-radius:10px;background:linear-gradient(135deg,#ffd9c7,#fff2e8);display:flex;align-items:center;justify-content:center;font-size:28px}
+    .title{display:flex;justify-content:space-between;align-items:center}
+    .title h4{margin:0;font-size:16px}
+    .desc{font-size:13px;color:var(--muted)}
+    .price-row{display:flex;justify-content:space-between;align-items:center}
+    .price{font-weight:700}
+    button.add{background:var(--accent);border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+    button.add:active{transform:translateY(1px)}
+
+    /* cart */
+    .cart{background:var(--card);padding:14px;border-radius:12px;height:fit-content;position:sticky;top:84px;box-shadow:0 2px 10px rgba(15,15,15,0.04)}
+    .cart h3{margin:0 0 8px 0}
+    .cart-list{display:flex;flex-direction:column;gap:10px;max-height:360px;overflow:auto;padding-right:6px}
+    .cart-item{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:8px;padding:8px}
+    .qty-controls{display:flex;gap:6px;align-items:center}
+    .qty-controls button{width:28px;height:28px;border-radius:6px;border:1px solid #eee;background:#fafafa}
+    .checkout{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+    .total{font-weight:800}
+    .btn-checkout{background:#111;color:#fff;padding:10px 14px;border-radius:8px;border:none;cursor:pointer}
+
+    footer{max-width:1100px;margin:14px auto;text-align:center;color:var(--muted);font-size:13px}
+
+    /* responsive */
+    @media (max-width:900px){main{grid-template-columns:1fr;padding:12px} .cart{position:fixed;left:0;right:0;bottom:0;border-radius:12px 12px 0 0;max-height:40vh;overflow:auto}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><div class="mark">FD</div><div>
+      <div style="font-size:14px;color:var(--muted)">Quick</div>
+      <div style="font-size:18px">Food Delivery</div>
+    </div></div>
+
+    <div class="search"><input id="search" placeholder="Search dishes, e.g. pizza, sushi..." /></div>
+    <div style="min-width:120px;text-align:right;color:var(--muted)">Delivery: 30–45 min</div>
+  </header>
+
+  <main>
+    <section>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="margin:0">Popular Near You</h2>
+        <div style="color:var(--muted);font-size:14px">Free delivery on orders over ₹499</div>
+      </div>
+
+      <div class="menu-grid" id="menu"></div>
+    </section>
+
+    <aside class="cart" id="cart">
+      <h3>Cart</h3>
+      <div class="cart-list" id="cart-list">
+        <div style="color:var(--muted);font-size:14px">Your cart is empty — add something tasty!</div>
+      </div>
+      <div class="checkout">
+        <div class="total">Total: ₹<span id="total">0</span></div>
+        <button class="btn-checkout" id="checkout">Checkout</button>
+      </div>
+    </aside>
+  </main>
+
+  <footer>Built with ❤️ — modify names, prices and styles to match your project.</footer>
+
+  <script>
+    // Simple dataset
+    const dishes = [
+      {id:1,name:'Margherita Pizza',desc:'Classic cheese & tomato',price:299,emoji:'🍕'},
+      {id:2,name:'Paneer Butter Masala',desc:'Creamy paneer with spices',price:259,emoji:'🍛'},
+      {id:3,name:'Veg Biryani',desc:'Fragrant basmati rice',price:199,emoji:'🍚'},
+      {id:4,name:'Schezwan Noodles',desc:'Spicy stir-fried noodles',price:169,emoji:'🍜'},
+      {id:5,name:'Cheeseburger',desc:'Juicy patty with cheese',price:189,emoji:'🍔'},
+      {id:6,name:'Chocolate Brownie',desc:'Rich chocolate dessert',price:99,emoji:'🍫'}
+    ]
+
+    const menuEl = document.getElementById('menu')
+    const cartListEl = document.getElementById('cart-list')
+    const totalEl = document.getElementById('total')
+    const searchEl = document.getElementById('search')
+
+    let cart = {}
+
+    function renderMenu(filter=''){
+      menuEl.innerHTML = ''
+      const list = dishes.filter(d => (d.name + ' ' + d.desc).toLowerCase().includes(filter.toLowerCase()))
+      list.forEach(d => {
+        const card = document.createElement('div')
+        card.className='card'
+        card.innerHTML = `
+          <div class="thumb">${d.emoji}</div>
+          <div class="title"><h4>${d.name}</h4><div class="price">₹${d.price}</div></div>
+          <div class="desc">${d.desc}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <div style="font-size:13px;color:var(--muted)">Fast • Hot</div>
+            <button class="add" data-id="${d.id}">Add</button>
+          </div>`
+        menuEl.appendChild(card)
+      })
+    }
+
+    function renderCart(){
+      cartListEl.innerHTML = ''
+      const items = Object.values(cart)
+      if(items.length===0){
+        cartListEl.innerHTML = '<div style="color:var(--muted)">Your cart is empty — add something tasty!</div>'
+        totalEl.textContent = '0'
+        return
+      }
+      let total = 0
+      items.forEach(it=>{
+        const row = document.createElement('div')
+        row.className='cart-item'
+        row.innerHTML = `
+          <div style="flex:1">
+            <div style="font-weight:700">${it.name}</div>
+            <div style="font-size:13px;color:var(--muted)">₹${it.price} × <span class="q">${it.qty}</span></div>
+          </div>
+          <div class="qty-controls">
+            <button data-op="dec" data-id="${it.id}">-</button>
+            <div style="min-width:22px;text-align:center">${it.qty}</div>
+            <button data-op="inc" data-id="${it.id}">+</button>
+          </div>`
+        cartListEl.appendChild(row)
+        total += it.price * it.qty
+      })
+      totalEl.textContent = total
+    }
+
+    // add event listeners
+    document.addEventListener('click', (e)=>{
+      const addBtn = e.target.closest('button.add')
+      if(addBtn){
+        const id = Number(addBtn.dataset.id)
+        const dish = dishes.find(d=>d.id===id)
+        if(!cart[id]) cart[id] = {...dish, qty:0}
+        cart[id].qty += 1
+        renderCart()
+      }
+
+      const opBtn = e.target.closest('button[data-op]')
+      if(opBtn){
+        const id = Number(opBtn.dataset.id)
+        const op = opBtn.dataset.op
+        if(!cart[id]) return
+        if(op==='inc') cart[id].qty += 1
+        else cart[id].qty -= 1
+        if(cart[id].qty<=0) delete cart[id]
+        renderCart()
+      }
+
+      if(e.target.id==='checkout'){
+        if(Object.keys(cart).length===0) return alert('Your cart is empty')
+        alert('Order placed! Total: ₹' + totalEl.textContent)
+        cart = {}
+        renderCart()
+      }
+    })
+
+    searchEl.addEventListener('input',(e)=> renderMenu(e.target.value))
+
+    // init
+    renderMenu()
+    renderCart()
+  </script>
+</body>
+</html>
